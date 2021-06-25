@@ -26,6 +26,11 @@ class ViewController: UIViewController, CLLocationManagerDelegate, UIGestureReco
         settingButton.backgroundColor = .white
         settingButton.layer.cornerRadius = 20.0
         
+        // ロングタップを検知
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(recognizeLongPress(sender:)))
+        //MapViewにリスナーを登録
+        self.mapView.addGestureRecognizer(longPress)
+        
     }
     
     @IBAction func longPressTap(_ sender: UILongPressGestureRecognizer) {
@@ -129,6 +134,33 @@ class ViewController: UIViewController, CLLocationManagerDelegate, UIGestureReco
             
         }
     }
+    
+    //ロングタップした時に呼ばれる関数
+        @objc func recognizeLongPress(sender: UILongPressGestureRecognizer) {
+            //長押し感知は最初の1回のみ
+            if sender.state != UIGestureRecognizer.State.began {
+                return
+            }
+
+            // 位置情報を取得
+            let location = sender.location(in: self.mapView)
+            let coordinate = self.mapView.convert(location, toCoordinateFrom: self.mapView)
+            // 出力
+            print(coordinate.latitude)
+            print(coordinate.longitude)
+            // タップした位置に照準を合わせる処理
+            let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+            let region = MKCoordinateRegion(center: coordinate, span: span)
+            self.mapView.region = region
+
+            // ピンを生成
+            let pin = MKPointAnnotation()
+            pin.title = "タイトル"
+            pin.subtitle = "サブタイトル"
+            // タップした位置情報に位置にピンを追加
+            pin.coordinate = coordinate
+            self.mapView.addAnnotation(pin)
+        }
     
     /* オプショナルバインディング-空じゃないかを判定する
      if 変数 != nil {
