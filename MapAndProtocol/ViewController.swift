@@ -10,13 +10,14 @@ import UIKit
 import MapKit
 import CoreLocation
 
-class ViewController: UIViewController, CLLocationManagerDelegate, UIGestureRecognizerDelegate, SearchLocationDeregate {
+class ViewController: UIViewController, CLLocationManagerDelegate, UIGestureRecognizerDelegate, SearchLocationDeregate, UITextFieldDelegate {
     
     @IBOutlet var longPress: UILongPressGestureRecognizer!
     @IBOutlet weak var mapView: MKMapView!
     var locManager: CLLocationManager!
     @IBOutlet weak var addressLabel: UILabel!
     @IBOutlet weak var settingButton: UIButton!
+    @IBOutlet weak var serchText: UITextField!
     
     var addressString = ""
     
@@ -25,6 +26,8 @@ class ViewController: UIViewController, CLLocationManagerDelegate, UIGestureReco
         
         settingButton.backgroundColor = .white
         settingButton.layer.cornerRadius = 20.0
+        
+        serchText.delegate = self
         
         // ロングタップを検知
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(recognizeLongPress(sender:)))
@@ -90,16 +93,13 @@ class ViewController: UIViewController, CLLocationManagerDelegate, UIGestureReco
         performSegue(withIdentifier: "next", sender: nil)
         
     }
-    
+    // 値渡し
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         
         if segue.identifier == "next" {
-            
             let nextVC = segue.destination as! NextViewController
             nextVC.delegate = self
-            
         }
-        
     }
     
     // 任されたデリゲートメソッド
@@ -136,31 +136,65 @@ class ViewController: UIViewController, CLLocationManagerDelegate, UIGestureReco
     }
     
     //ロングタップした時に呼ばれる関数
-        @objc func recognizeLongPress(sender: UILongPressGestureRecognizer) {
-            //長押し感知は最初の1回のみ
-            if sender.state != UIGestureRecognizer.State.began {
-                return
-            }
-
-            // 位置情報を取得
-            let location = sender.location(in: self.mapView)
-            let coordinate = self.mapView.convert(location, toCoordinateFrom: self.mapView)
-            // 出力
-            print(coordinate.latitude)
-            print(coordinate.longitude)
-            // タップした位置に照準を合わせる処理
-            let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-            let region = MKCoordinateRegion(center: coordinate, span: span)
-            self.mapView.region = region
-
-            // ピンを生成
-            let pin = MKPointAnnotation()
-            pin.title = "タイトル"
-            pin.subtitle = "サブタイトル"
-            // タップした位置情報に位置にピンを追加
-            pin.coordinate = coordinate
-            self.mapView.addAnnotation(pin)
+    @objc func recognizeLongPress(sender: UILongPressGestureRecognizer) {
+        //長押し感知は最初の1回のみ
+        if sender.state != UIGestureRecognizer.State.began {
+            return
         }
+        
+        // 位置情報を取得
+        let location = sender.location(in: self.mapView)
+        let coordinate = self.mapView.convert(location, toCoordinateFrom: self.mapView)
+        // 出力
+        print(coordinate.latitude)
+        print(coordinate.longitude)
+        // タップした位置に照準を合わせる処理
+        let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        let region = MKCoordinateRegion(center: coordinate, span: span)
+        self.mapView.region = region
+        
+        // ピンを生成
+        let pin = MKPointAnnotation()
+        pin.title = "タイトル"
+        pin.subtitle = "サブタイトル"
+        // タップした位置情報に位置にピンを追加
+        pin.coordinate = coordinate
+        self.mapView.addAnnotation(pin)
+    }
+    
+    // 地域検索
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        serchText.resignFirstResponder()
+        
+        if let searchKey = serchText.text {
+            
+            print(searchKey)
+            
+            let geocoder = CLGeocoder()
+            
+            geocoder.geocodeAddressString(searchKey, completionHandler: { (placemarks, error) in
+                
+                if let unwrapPlacemarks = placemarks {
+                    if let firstPlacemark = unwrapPlacemarks.first {
+                        if let location = firstPlacemark.location {
+                            let targetCoordinate = location.coordinate
+                            print(targetCoordinate)
+                            
+                            let pin = MKPointAnnotation()
+                            
+                            pin.coordinate = targetCoordinate
+                            pin.title = searchKey
+                            self.mapView.addAnnotation(pin)
+                            
+                            
+                            self.mapView.region = MKCoordinateRegion(center: targetCoordinate, latitudinalMeters: 500.0, longitudinalMeters: 500.00)
+                        }
+                    }
+                }
+            })
+        }
+        return true
+    }
     
     /* オプショナルバインディング-空じゃないかを判定する
      if 変数 != nil {
